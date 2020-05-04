@@ -7,6 +7,6 @@
 ## Homework 1 (May 04)
 You can find the answers of homework 1, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
 
-* [Question 1](files/HW1Q1.html)
-* [Question 2](files/HW1Q2.html)
-* [Question 3](files/HW1Q3.html)
+* [Question 1](files/1.html)
+* [Question 2](files/2.html)
+* [Question 3](files/3.html)
