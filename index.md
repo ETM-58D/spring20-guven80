@@ -10,3 +10,11 @@ You can find the answers of homework 1, which we prepared as a group with Ceren 
 * [Question 1](files/H1Q1.html)
 * [Question 2](files/H1Q2.html)
 * [Question 3](files/H1Q3.html)
+
+## Homework 2 & 3 (June 07)
+You can find the answers of homework 2 & 3, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
+
+* [Part a](files/H23Pa.html)
+* [Part b](files/H23Pb.html)
+* [Part c](files/H23Pc.html)
+* [Part d](files/H23Pd.html)
