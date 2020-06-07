@@ -14,7 +14,7 @@ You can find the answers of homework 1, which we prepared as a group with Ceren 
 ## Homework 2 & 3 (June 07)
 You can find the answers of homework 2 & 3, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
 
-* [Part a](files/H23Pa.html)
-* [Part b](files/H23Pb.html)
-* [Part c](files/H23Pc.html)
-* [Part d](files/H23Pd.html)
+* [Part A](files/H23Pa.html)
+* [Part B](files/H23Pb.html)
+* [Part C](files/H23Pc.html)
+* [Part D](files/H23Pd.html)
