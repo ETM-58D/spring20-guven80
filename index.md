@@ -25,3 +25,5 @@ You can find the answers of homework 2 & 3, which we prepared as a group with Ce
 * [Part A](files/HW4a.html)
 * [Part B](files/HW4b.html)
 * [Part C](files/HW4c.html)
+
+Not: Live application can be accessed from [here](https://spring20-guven80.shinyapps.io/HW_4).
