@@ -20,7 +20,7 @@ You can find the answers of homework 2 & 3, which we prepared as a group with Ce
 * [Part D](files/H23Pd.html)
 
 ## Homework 4 (June 21)
-You can find the answers of homework 2 & 3, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
+You can find the answers of homework 4, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
 
 * [Part A](files/HW4a.html)
 * [Part B](files/HW4b.html)
