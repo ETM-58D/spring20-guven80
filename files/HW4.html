@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="date" content="2020-06-17" />
+<meta name="date" content="2020-06-22" />
 
 <title>HW4.R</title>
 
@@ -383,7 +383,7 @@ summary {
 
 
 <h1 class="title toc-ignore">HW4.R</h1>
-<h4 class="date">2020-06-17</h4>
+<h4 class="date">2020-06-22</h4>
 
 </div>
 
@@ -398,7 +398,7 @@ ui = fluidPage(
   column(4, mainPanel(
     # Ask for dates to be filted
     dateRangeInput(&quot;date_range_input&quot;,
-                   &quot;Please select date range to be displayed and click \&quot;Display\&quot;.&quot;,
+                   &quot;Please select a date range; and click \&quot;Display\&quot; to see consumption and temperature values as a table, and click \&quot;Plot\&quot; to see the statistics of consumption and temperature as a plot. Please note that for forecasting plot; end date should be on or before December 27, 2019.&quot;,
                    start = &quot;2017-01-01&quot;,
                    end = &quot;2019-12-29&quot;,
                    min = &quot;2017-01-01&quot;,
@@ -486,23 +486,55 @@ server = function(input, output)
       
       # Calculate data for temperature plot
       data_plot_t = unique(filtered_data[,list(Hour)])
+      data_plot_t = data_plot_t[, Avg_T1 := 0]
+      data_plot_t = data_plot_t[, Avg_T2 := 0]
+      data_plot_t = data_plot_t[, Avg_T3 := 0]
+      data_plot_t = data_plot_t[, Avg_T4 := 0]
+      data_plot_t = data_plot_t[, Avg_T5 := 0]
+      data_plot_t = data_plot_t[, Avg_T6 := 0]
+      data_plot_t = data_plot_t[, Avg_T7 := 0]
       data_plot_t = data_plot_t[, Avg_Temperature := 0]
       for(i in 0:23)
-        data_plot_t[i + 1, 2] = mean(c(filtered_data$T_1[filtered_data$Hour == i],
+      {
+        data_plot_t[i + 1, 2] = mean(filtered_data$T_1[filtered_data$Hour == i])
+        data_plot_t[i + 1, 3] = mean(filtered_data$T_2[filtered_data$Hour == i])
+        data_plot_t[i + 1, 4] = mean(filtered_data$T_3[filtered_data$Hour == i])
+        data_plot_t[i + 1, 5] = mean(filtered_data$T_4[filtered_data$Hour == i])
+        data_plot_t[i + 1, 6] = mean(filtered_data$T_5[filtered_data$Hour == i])
+        data_plot_t[i + 1, 7] = mean(filtered_data$T_6[filtered_data$Hour == i])
+        data_plot_t[i + 1, 8] = mean(filtered_data$T_7[filtered_data$Hour == i])
+        data_plot_t[i + 1, 9] = mean(c(filtered_data$T_1[filtered_data$Hour == i],
                                        filtered_data$T_2[filtered_data$Hour == i],
                                        filtered_data$T_3[filtered_data$Hour == i],
                                        filtered_data$T_4[filtered_data$Hour == i],
                                        filtered_data$T_5[filtered_data$Hour == i],
                                        filtered_data$T_6[filtered_data$Hour == i],
                                        filtered_data$T_7[filtered_data$Hour == i]))
+      }
       
-      plot(data_plot_t$Hour, data_plot_t$Avg_Temperature, type = &quot;b&quot;, col = &quot;red&quot;, xlab = &quot;Hours&quot;, ylab = &quot;Average Temperature&quot;, main = &quot;Temperature Plot&quot;)
+      plot(data_plot_t$Hour, data_plot_t$Avg_Temperature, type = &quot;b&quot;, col = &quot;red&quot;, xlab = &quot;Hours&quot;, ylab = &quot;Average Temperature&quot;, main = &quot;Temperature Plot&quot;, ylim=c(5, 25))
+      points(data_plot_t$Hour, data_plot_t$Avg_T1, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T1, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T2, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T2, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T3, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T3, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T4, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T4, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T5, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T5, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T6, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T6, type = &quot;l&quot;)
+      points(data_plot_t$Hour, data_plot_t$Avg_T7, type = &quot;l&quot;)
+      lines(data_plot_t$Hour, data_plot_t$Avg_T7, type = &quot;l&quot;)
     }
   })
   
   # Filter data for forecast plot
   data_plot_forecast = eventReactive(input$button_plot, {
     if (as.integer(input$date_range_input[2]) &gt; as.Date(&quot;2019-12-27&quot;))
+      output$warning =  renderText(&quot;Warning: End date must be on or after start date!&quot;)
+    else if (as.integer(input$date_range_input[2]) &lt; as.integer(input$date_range_input[1]))
       output$warning =  renderText(&quot;Warning: For forecasting; please pick a date on or before December 27, 2019!&quot;)
     else
     {
@@ -513,12 +545,6 @@ server = function(input, output)
       data_date = data_date[complete.cases(data_date)]
       
       filtered_data = data_date[data_date$Date == as.character(input$date_range_input[2] + 2)]
-      
-      observeEvent(input$button_display, {
-        cat(&quot;Start Date: &quot;, as.character(input$date_range_input[1]), &quot;\n&quot;)
-        cat(&quot;End Date: &quot;, as.character(input$date_range_input[2]), &quot;\n\n&quot;)
-        str(filtered_data)
-        })
       
       plot(filtered_data$Hour, filtered_data$lag_48, type = &quot;b&quot;, col = &quot;green&quot;, xlab = &quot;Hours&quot;, ylab = &quot;Forecast&quot;, main = &quot;Lag 48 Forecast Plot&quot;)
     }
