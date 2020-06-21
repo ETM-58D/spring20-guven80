@@ -22,8 +22,8 @@ You can find the answers of homework 2 & 3, which we prepared as a group with Ce
 ## Homework 4 (June 21)
 You can find the answers of homework 4, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
 
-* [Part A](files/HW4_a.html)
-* [Part B](files/HW4_b.html)
-* [Part C](files/HW4_c.html)
+* [Part A](files/HW4a.html)
+* [Part B](files/HW4b.html)
+* [Part C](files/HW4c.html)
 
 Not: Live application can be accessed from [here](https://spring20-guven80.shinyapps.io/HW_4).
