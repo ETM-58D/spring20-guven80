@@ -1,3 +1,28 @@
+## Homework 4
+
+For Homework 4, we developed a shiny app to visualize the electricity consumption. 
+
+In this app:
+
+- User can filter the data by selecting a beginning and an end date.
+
+- With display button, user can display the filtered data as a table; this summary table includes the date, hour, consumption and average temperature values.
+
+- With plot button, user can reach 3 plots; 
+    
+    1- Average hourly consumption over the filtered time period
+    
+    2- Average hourly temperature values for multiple cities and overall average
+    
+    3- (BONUS) Two days ahead forecasted consumption values
+
+- Plots are rescaled with each date selection to reflect on the min and max values of selected dates. 
+
+- Since we user lag-48 approach for forecasting, to see the forecasting plot; the selected end date should be no later than December 27, 2019. If user selects an end date after this date, a warning is displayed below the date range selection component. 
+
+- If user selects an end date before the starting date, a warning message is displayed for the use; stating that the end date should be on or after the start date.
+
+```{r}
 # Include libraries
 library("data.table")
 library("shiny")
@@ -202,3 +227,4 @@ server = function(input, output)
 
 # Call shiny
 shinyApp(ui = ui, server = server)
+```
