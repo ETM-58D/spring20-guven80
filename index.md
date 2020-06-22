@@ -22,4 +22,4 @@ You can find the answers of homework 2 & 3, which we prepared as a group with Ce
 ## Homework 4 (June 22)
 You can find the answers of homework 4, which we prepared as a group with Ceren Demirkol and Sevgican Varol.
 
-For [Homework 4](files/HW_4.rmd), we developed a shiny app to visualize the electricity consumption.
+For [Homework 4](files/HW_4.Rmd), we developed a shiny app to visualize the electricity consumption.
