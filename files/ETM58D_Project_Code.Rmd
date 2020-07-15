@@ -1,0 +1,492 @@
+---
+title: "Trendyol Sales Prediction Project"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Loading Libraries and Data
+This part of the code is provided for the project.  
+
+```{r}
+library(ggplot2)
+library(lubridate)
+library(caTools)
+library(zoo)
+library(forecast)
+require(jsonlite)
+require(httr)
+require(data.table)
+library(rvest)
+
+get_token <- function(username, password, url_site){
+    
+    post_body = list(username=username,password=password)
+    post_url_string = paste0(url_site,'/token/')
+    result = POST(post_url_string, body = post_body)
+	
+	token=NULL
+    # error handling (wrong credentials)
+    if(result$status_code==400){
+        print('Check your credentials')
+        return(0)
+    }
+    else if (result$status_code==201){
+        output = content(result)
+        token = output$key
+    }
+
+    return(token)
+}
+
+#get_data <- function(start_date='2020-03-20', token, url_site){  #hocan˝n
+    
+get_data <- function(start_date='2020-03-20', token, url_site,username, password){
+    
+    post_body = list(start_date=start_date,username=username,password=password)
+    post_url_string = paste0(url_site,'/dataset/')
+    
+    header = add_headers(c(Authorization=paste('Token',token,sep=' ')))
+    result = GET(post_url_string, header, body = post_body)
+    output = content(result)
+    data = data.table::rbindlist(output)
+    data[,event_date:=as.Date(event_date)]
+    data = data[order(product_content_id,event_date)]
+    return(data)
+}
+
+
+send_submission <- function(predictions, token, url_site, submit_now=F){
+    
+    format_check=check_format(predictions)
+    if(!format_check){
+        return(FALSE)
+    }
+    
+    post_string="list("
+    for(i in 1:nrow(predictions)){
+        post_string=sprintf("%s'%s'=%s",post_string,predictions$product_content_id[i],predictions$forecast[i])
+        if(i<nrow(predictions)){
+            post_string=sprintf("%s,",post_string)
+        } else {
+            post_string=sprintf("%s)",post_string)
+        }
+    }
+    
+    submission = eval(parse(text=post_string))
+    json_body = jsonlite::toJSON(submission, auto_unbox = TRUE)
+    submission=list(submission=json_body)
+    
+    print(submission)
+    # {"31515569":2.4,"32939029":2.4,"4066298":2.4,"6676673":2.4,"7061886":2.4,"85004":2.4} 
+
+    if(!submit_now){
+        print("You did not submit.")
+        return(FALSE)      
+    }
+    
+
+    header = add_headers(c(Authorization=paste('Token',token,sep=' ')))
+    post_url_string = paste0(url_site,'/submission/')
+    result = POST(post_url_string, header, body=submission)
+    
+    if (result$status_code==201){
+        print("Successfully submitted. Below you can see the details of your submission")
+    } else {
+        print("Could not submit. Please check the error message below, contact the assistant if needed.")
+    }
+    
+    print(content(result))
+    
+}
+
+check_format <- function(predictions){
+    
+    if(is.data.frame(predictions) | is.data.frame(predictions)){
+        if(all(c('product_content_id','forecast') %in% names(predictions))){
+            if(is.numeric(predictions$forecast)){
+                print("Format OK")
+                return(TRUE)
+            } else {
+                print("forecast information is not numeric")
+                return(FALSE)                
+            }
+        } else {
+            print("Wrong column names. Please provide 'product_content_id' and 'forecast' columns")
+            return(FALSE)
+        }
+        
+    } else {
+        print("Wrong format. Please provide data.frame or data.table object")
+        return(FALSE)
+    }
+    
+}
+
+# this part is main code
+subm_url = 'http://157.230.99.81'
+
+# change your credentials accordingly
+u_name = 'Group1'
+p_word = 'JcIcMxP7CWUusF84'
+submit_now = FALSE
+
+token = get_token(username=u_name, password=p_word, url=subm_url)
+data = get_data(token=token,url=subm_url,username=u_name, password=p_word) 
+
+predictions=unique(data[,list(product_content_id)])
+predictions[,forecast:=2.3]
+
+send_submission(predictions, token, url=subm_url, submit_now=F)
+```
+
+## Data Preparation and Imputation 
+
+After reading in the data; we transformed -1 values to NA, because -1 values represented the sales=0 data for related products. Then we performed imputation with zoo package, to fill in these values with the closes neighboring value. 
+
+```{r}
+#Converting -1 values to NA for 5 variables that contain NaN values in original set
+data$price[data$price==-1] <- NA
+data$category_visits[data$category_visits==-1] <- NA
+data$ty_visits[data$ty_visits==-1] <- NA
+data$category_sold[data$category_sold==-1] <- NA
+data$category_brand_sold[data$category_brand_sold==-1] <- NA
+
+#Changing variable types to numeric and factor
+initialdata=data
+initialdata$product_content_id <- as.factor(initialdata$product_content_id) 
+initialdata$sold_count <- as.numeric(initialdata$sold_count)         
+initialdata$visit_count <- as.numeric(initialdata$visit_count)
+initialdata$favored_count <- as.numeric(initialdata$favored_count)
+initialdata$basket_count <- as.numeric(initialdata$basket_count)
+initialdata$category_sold <- as.numeric(initialdata$category_sold)
+initialdata$category_brand_sold <- as.numeric(initialdata$category_brand_sold)
+initialdata$category_visits <- as.numeric(initialdata$category_visits)
+initialdata$ty_visits <- as.numeric(initialdata$ty_visits)
+
+#Filling in NA prices - na.locf function in zoo package 
+initialdata <- na.locf(initialdata, na.rm=FALSE, option = "locf")
+initialdata <- na.locf(initialdata, na.rm=FALSE, option = "locf", fromLast = TRUE)
+
+#Plots of price change over time for each product 
+plot(initialdata[product_content_id==85004]$event_date,initialdata[product_content_id==85004]$price)
+plot(initialdata[product_content_id==4066298]$event_date,initialdata[product_content_id==4066298]$price)
+plot(initialdata[product_content_id==6676673]$event_date,initialdata[product_content_id==6676673]$price)
+plot(initialdata[product_content_id==7061886]$event_date,initialdata[product_content_id==7061886]$price)
+plot(initialdata[product_content_id==31515569]$event_date,initialdata[product_content_id==31515569]$price)
+plot(initialdata[product_content_id==32939029]$event_date,initialdata[product_content_id==32939029]$price)
+plot(initialdata[product_content_id==5926527]$event_date,initialdata[product_content_id==5926527]$price)
+plot(initialdata[product_content_id==3904356]$event_date,initialdata[product_content_id==3904356]$price)
+
+#Product List is here for easily matching product_content_id with products
+product_list=predictions[,1]
+top_hierarchy=data.table(c("Giyim","S¸permarket","Giyim","S¸permarket","Giyim","Elektronik","Elektronik","Kozmetik"))
+bottom_hierarchy=data.table(c("Tayt","ﬁarj Edebilir Di˛ F˝rÁas˝","Mont","Islak Mendil & Havlu","Bikini ‹st¸","Telefon Bluetooth Kulakl˝k","S¸p¸rge","Y¸z Temizleyici"))
+brand=data.table(c("TRENDYOLM›LLA","Oral-B","Koton","Sleepy","TRENDYOLM›LLA","Xiaomi","Fakir","La Roche Posay"))
+product_list=cbind(product_list,top_hierarchy,bottom_hierarchy,brand)
+colnames(product_list)=c("product_content_id","top_hierarchy","bottom_hierarchy","brand")
+product_list
+
+```
+
+## Scraping Current Prices from Trendyol Website
+Since price is a major factor in purchasing decisions and there are daily price changes/discounts in Trendyol; we scraped current up-to-date price from their websites to adjust our predictions accordingly.
+
+```{r}
+url31515569 <- 'https://www.trendyol.com/trendyolmilla/siyah-yuksek-bel-toparlayici-orme-tayt-twoaw20ta0087-p-31515569'
+url32939029 <- 'https://www.trendyol.com/oral-b/vitality-100-cross-action-white-elektrikli-dis-fircasi-p-32939029'
+url3904356 <- 'https://www.trendyol.com/koton/erkek-lacivert-fermuar-detayli-uzun-kollu-cep-detayli-kapitone-mont-9kam21129nw-p-3904356'
+url4066298 <- 'https://www.trendyol.com/sleepy/natural-yenidogan-islak-pamuklu-havlu-40-li-x-12-480-yaprak-p-4066298'
+url5926527 <- 'https://www.trendyol.com/trendyolmilla/siyah-kapli-cicek-desenli-bikini-ustu-tbess19wv0005-p-5926527'
+url6676673 <- 'https://www.trendyol.com/xiaomi/redmi-airdots-tws-bluetooth-basic-5-0-kulaklik-p-6676673'
+url7061886 <- 'https://www.trendyol.com/fakir/lucky-dikey-elektrikli-supurge-kum-beji-p-7061886'
+url85004 <- 'https://www.trendyol.com/la-roche-posay/effaclar-yuz-temizleme-jeli-yagli-akneye-egilim-gosteren-ciltler-siyah-nokta-karsiti-200ml-p-85004'
+
+page85004 <- read_html(url85004)
+page4066298 <- read_html(url4066298)
+page32939029 <- read_html(url32939029)
+page31515569 <- read_html(url31515569)
+page3904356 <- read_html(url3904356)
+page5926527 <- read_html(url5926527)
+page6676673 <- read_html(url6676673)
+page7061886 <- read_html(url7061886)  
+
+today=predictions
+colnames(today)=c("product_content_id","price")
+
+price_31515569 <- page31515569 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_31515569, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[1,2]=new
+
+
+price_32939029 <- page32939029 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_32939029, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[2,2]=new
+
+price_3904356 <- page3904356 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_3904356, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[3,2]=0   #when this product is soldout,we get an error.
+today[3,2]=new
+
+price_4066298 <- page4066298 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_4066298, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[4,2]=new
+
+price_5926527 <- page5926527 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_5926527, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[5,2]=new
+
+price_6676673 <- page6676673 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_6676673, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[6,2]=new
+
+price_7061886 <- page7061886 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_7061886, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[7,2]=new
+
+price_85004 <- page85004 %>%
+  html_nodes(".prc-slg") %>%
+  html_text()
+new <- unlist(strsplit(price_85004, "\\ "))
+new <- gsub(",", ".", new[1])
+new=as.numeric(new)
+today[8,2]=new
+
+today
+```
+
+## Naive Approaches
+In the beginning, we developed several naive approaches for predictions while we develop our final model. These helped us to get even more familiar with the data and observe trends closer. 
+
+```{r}
+
+#Looking at the last X days averages 
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    predictions[i,2]=predict365(data,code)
+}
+our_predictions=predictions
+our_predictions[,last365days:=predictions[,2]]
+predictions=predictions[,1:2]
+
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    predictions[i,2]=predict_lastXdays(data,code,7)
+}
+our_predictions[,last7days:=predictions[,2]]
+
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    predictions[i,2]=predict_avglastXdays(data,code,7)
+}
+our_predictions[,last7days_avg:=predictions[,2]]
+
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    predictions[i,2]=predict_avglastXdays(data,code,30)
+}
+our_predictions[,last30days_avg:=predictions[,2]]
+
+# Prediction from last year
+predict365=function(data,code){
+    product=data[data$product_content_id==code]
+    prediction_date=ymd(Sys.Date())  - years(1)
+    prediction=product[product$event_date==prediction_date,]
+    
+    
+    #print(prediction$sold_count)
+    return(prediction$sold_count)
+}
+
+# Prediction from last X days
+predict_lastXdays=function(data,code,n_days){
+    product=data[data$product_content_id==code]
+    prediction_date=ymd(Sys.Date()) - days(n_days) 
+    prediction=product[product$event_date==prediction_date,]
+    
+    return(prediction$sold_count)
+}
+
+# Prediction with average sales of last X days
+predict_avglastXdays=function(data,code,n_days){
+    sum=0
+    product=data[data$product_content_id==code]
+    for(i in 1:n_days){
+        prediction_date=ymd(Sys.Date()) - days(i) 
+        prediction=product[product$event_date==prediction_date,]
+        sum=sum+prediction$sold_count
+    }
+    average_sold_count=sum/n_days
+    
+    return(average_sold_count)
+}
+
+#prediction from last 2 weeks mean with sold_count
+for(p_id in 1:8){
+    code=as.numeric(predictions[p_id,1])
+    p1=data[data$product_content_id==code & data$event_date>=ymd(Sys.Date()) - days(14)]
+    mean1=mean(p1$sold_count[1:7])
+    mean2=mean(p1$sold_count[7:14])
+    change=(mean1-mean2)/mean1
+    predicted_sold_count=p1$sold_count[p1$event_date==ymd(Sys.Date()) - days(6)]*(1+change)
+    if(is.nan(predicted_sold_count)){
+        predicted_sold_count=0
+    }
+    predictions[p_id,2]=predicted_sold_count
+}
+our_predictions[,last14days_meanWithSoldCount:=predictions[,2]]
+
+#prediction from last 2 weeks mean with basket_count
+for(p_id in 1:8){
+    code=as.numeric(predictions[p_id,1])
+    p1=data[data$product_content_id==code & data$event_date>=ymd(Sys.Date()) - days(14)]
+    mean1=mean(p1$basket_count[1:7])
+    mean2=mean(p1$basket_count[7:14])
+    change=(mean1-mean2)/mean1
+    predicted_sold_count=p1$sold_count[p1$event_date==ymd(Sys.Date()) - days(6)]*(1+change)
+    if(is.nan(predicted_sold_count)){
+        predicted_sold_count=0
+    }
+    predictions[p_id,2]=predicted_sold_count
+}
+our_predictions[,last14days_meanWithBasketCount:=predictions[,2]]
+our_predictions
+predictions
+
+#Change rates of last 2 weeks data
+p_id=6
+
+code=as.numeric(predictions[p_id,1])
+p1=data[data$product_content_id==code & data$event_date>=ymd(Sys.Date()) - days(14)]
+mean1=mean(p1$sold_count[1:7])
+mean2=mean(p1$sold_count[7:14])
+change=(mean1-mean2)/mean1
+predicted_sold_count=p1$sold_count[p1$event_date==ymd(Sys.Date()) - days(6)]*(1+change)
+if(is.nan(predicted_sold_count)){
+    predicted_sold_count=0
+}
+predictions[p_id,2]=predicted_sold_count
+
+product_list$bottom_hierarchy[p_id]
+mean2
+mean1
+change
+p1$sold_count[p1$event_date==ymd(Sys.Date()) - days(6)]
+predicted_sold_count
+p1
+plot(p1$sold_count,p1$sold_count)
+
+#Using max and min predicted values for predictions
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    predictions[i,2]=predict_lastXdays(data,code,7)
+}
+lag7=predictions
+
+max_prediction=predictions[,2]
+min_prediction=predictions[,2]
+
+for(i in 1:8){
+    max_prediction[i]=max(pr_sold[i,2],pr_basket[i,2],lag7[i,2])
+    min_prediction[i]=abs(min(pr_sold[i,2],pr_basket[i,2],lag7[i,2]))
+}
+cbind(pr_sold,pr_basket,lag7,max_prediction,min_prediction)
+predictions$forecast=max_prediction
+predictions
+
+```
+
+## Linear Regression Model
+During our analysis, we also formed a linear regression model. After careful consideration; we decided that making predictions with a linear model in such setting would require predicting the predictors as well, leading to inflated error rates. So this linear regression model was not extended, and none of our predictions were made using this model. 
+
+```{r}
+# prediction with Linear regression
+predict_lin=function(data,code){
+    product=data[data$product_content_id==code]
+    #product=product[,-season]
+    product$product_content_id= as.numeric(product$product_content_id)
+    ss <- sample(1:2,size=nrow(product),replace=TRUE,prob=c(0.7,0.3))
+    train <- product[ss==1,]
+    test <- product[ss==2,]
+    linmod=lm(sold_count~., train)
+    prediction=predict(linmod,test)
+    return(prediction)
+}
+
+product=data[data$product_content_id==6676673]
+product$product_content_id= as.numeric(product$product_content_id)
+ss <- sample(1:2,size=nrow(product),replace=TRUE,prob=c(0.7,0.3))
+train <- product[ss==1,]
+test <- product[ss==2,]
+
+linmod=lm(sold_count~.-1, train)
+prediction=predict(linmod,test)
+summary(linmod)
+```
+
+## Time Series Forecasting with Forecast Package
+Our final models are using forecast package. Using 30-day and 90-day data, 2 different forecasts are provided. 
+
+```{r}
+# Forecast with 90 days
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    tdata=data[data$product_content_id==code ]    
+    tdata=tdata[((.N)-90):.N,]
+    time_data=as.ts(tdata)
+    d=forecast(time_data,h=2)
+    x=data.frame(d)
+    x=predicted_soldcount=x[x$Series=="sold_count",3]
+    predictions[i,2]=x[2]
+}
+f90=predictions
+
+# Forecast with 30 days
+for(i in 1:8){
+    code=as.numeric(predictions[i,1])
+    tdata=data[data$product_content_id==code ]    
+    tdata=tdata[((.N)-30):.N,]
+    time_data=as.ts(tdata)
+    d=forecast(time_data,h=2)
+    x=data.frame(d)
+    x=predicted_soldcount=x[x$Series=="sold_count",3]
+    predictions[i,2]=x[2]
+}
+f30=predictions[,2]
+
+combined=cbind(f90,f30)
+colnames(combined)=c("product_content_id","forecast 90","forecast 30")
+combined
+```
+
+
