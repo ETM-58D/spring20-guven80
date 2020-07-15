@@ -25,4 +25,4 @@ You can find the answers of homework 4, which we prepared as a group with Ceren 
 For [Homework 4](files/HW_4.html), we developed a shiny app to visualize the electricity consumption.
 
 ## ETM58D Project (July 16)
-The [report](ETM58D_Project.pdf) and the [code](Project_Submit.html) are available for Trendyol Sales Prediction Project, prepared in collaboration with [Ceren Demirkol](https://etm-58d.github.io/spring20-cerendemirkol/) and [Sevgican Varol](https://etm-58d.github.io/spring20-sevgicanvrl/).
+The [report](files/ETM58D_Project.pdf) and the [code](files/Project_Submit.html) are available for Trendyol Sales Prediction Project, prepared in collaboration with [Ceren Demirkol](https://etm-58d.github.io/spring20-cerendemirkol/) and [Sevgican Varol](https://etm-58d.github.io/spring20-sevgicanvrl/).
