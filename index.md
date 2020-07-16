@@ -1,4 +1,4 @@
-﻿# Okan Güven Progress Journel
+﻿# Okan Hikmet Güven Progress Journel
 
 ## Week 0 (March 02)
 
